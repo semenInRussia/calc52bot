@@ -170,7 +170,7 @@ LOX_ID = "5368391681"
 @noban
 async def lox(msg: types.Message):
     # send message to lox
-    if msg.text and msg.text.strip():
+    if msg.text and only_text(msg.text).strip():
         logger.info("message to lox was sent")
         await bot.send_message(LOX_ID, only_text(msg.text))
         await msg.answer("отправил")
