@@ -3,7 +3,6 @@ import asyncio, logging
 import json
 from sympy import symbols, Eq, solveset, Complexes
 
-logging.basicConfig(level=logging.INFO)
 from aiogram.filters.command import Command
 from aiogram import Bot, Dispatcher, types, F
 
@@ -12,6 +11,15 @@ with open("token.txt", "r") as f:
 
 bot = Bot(token=token)
 disp = Dispatcher()
+
+# logging settings
+logging.basicConfig(level=logging.INFO,
+                    format='[%(asctime)s](%(levelname)s) %(message)s',
+                    filename="log.log",
+                    encoding="UTF-*")
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 
 
 def _solve(a: list[float]):
@@ -28,13 +36,13 @@ def log(f):
     # wrapper which do logging
 
     async def w(msg: types.Message):
-        logging.info(f"new message: {msg.text}")
+        logger.info(f"new message: {msg.text}")
         await f(msg)
 
     return w
 
 
-banned = ["Biomeh_1729"]
+banned = []
 
 OWNER_ID = "664167507"
 
@@ -47,9 +55,9 @@ def noban(f):
             await f(msg)
             return
         who = msg.from_user.username
-        logging.info(f"new user {who} {' [banned]' if who in banned else ''}")
+        logger.info(f"new user {who} {' [banned]' if who in banned else ''}")
         if who in banned:
-            logging.warning(f"id: {msg.chat.id}")
+            logger.warning(f"id: {msg.chat.id}")
             await msg.answer("привет, ты забанен")
             if msg.text:
                 await bot.send_message(OWNER_ID, msg.text)
@@ -79,9 +87,30 @@ async def send_file(msg: types.Message, path: str, **kwargs):
 @log
 async def tg_code(msg: types.Message):
     if msg.from_user:
-        logging.info(f"query for code: {msg.from_user.username}")
+        logger.info(f"query for code: {msg.from_user.username}")
     await send_file(msg, __file__, filename="calc52bot.py")
     await send_file(msg, os.path.join(os.path.dirname(__file__), "cits.json"))
+
+
+owners = ["semenInRussia"]
+
+
+def forowners(f):
+
+    async def w(msg: types.Message):
+        if msg.from_user and msg.from_user.username in owners:
+            await f(msg)
+        else:
+            await msg.answer("Вы не админ")
+
+    return w
+
+
+@disp.message(Command("log"))
+@log
+@forowners
+async def tg_log(msg: types.Message):
+    await send_file(msg, os.path.join(os.path.dirname(__file__), "log.log"))
 
 
 def is_num(s: str) -> bool:
@@ -109,13 +138,13 @@ def handle_cits(f):
     # wrapper which before run function answer with cits, if message have one key of citations
 
     async def w(msg: types.Message):
-        logging.info("check cits")
+        logger.info("check cits")
         if not msg.text:
             await f(msg)
             return
         t = only_text(msg.text).lower().rstrip(".")
         if t in cits:
-            logging.info("show cite")
+            logger.info("show cite")
             await msg.reply(cits[t])
         else:
             await f(msg)
@@ -127,7 +156,7 @@ def handle_cits(f):
 @log
 @noban
 async def tg_cits(msg: types.Message):
-    logging.info("give list of cits")
+    logger.info("give list of cits")
     await msg.answer(
         "Список ключей для цитат, просто напишите ключ, я дам цитату:")
     await msg.answer("\n- ".join([""] + list(cits.keys())))
@@ -141,10 +170,12 @@ LOX_ID = "5368391681"
 @noban
 async def lox(msg: types.Message):
     # send message to lox
-    if msg.text:
-        logging.warning("message to lox was sent")
+    if msg.text and msg.text.strip():
+        logger.info("message to lox was sent")
         await bot.send_message(LOX_ID, only_text(msg.text))
         await msg.answer("отправил")
+    elif msg.text:
+        logger.warning("message to lox was empty and wasn't sent")
 
 
 @disp.message(F.text)
@@ -162,9 +193,10 @@ async def tg_solve(msg: types.Message):
         return
 
     if not all(map(is_num, txt.split())):
-        await msg.answer(
-            "Коэффициенты МНогоЧлена, это числа, возможно с точкой (не запятой)"
-        )
+        if msg.chat and msg.chat.id != LOX_ID:
+            await msg.answer(
+                "Коэффициенты МНогоЧлена, это числа, возможно с точкой (не запятой)"
+            )
         return
 
     nums = list(map(float, txt.split()))
@@ -191,4 +223,4 @@ if __name__ == '__main__':
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logging.info("bye!")
+        logger.info("bye!")
