@@ -160,6 +160,7 @@ async def tg_solve(msg: types.Message):
     if not txt.strip():
         await msg.answer("ВВеди коэффициенты вашего МНогоЧлена")
         return
+
     if not all(map(is_num, txt.split())):
         await msg.answer(
             "Коэффициенты МНогоЧлена, это числа, возможно с точкой (не запятой)"
@@ -171,9 +172,12 @@ async def tg_solve(msg: types.Message):
     if not ans:
         await msg.answer("Нет корней, увы")
         return
+
     if ans == Complexes:
         await msg.answer("x - любое")
         return
+
+    # just list roots
     await msg.answer("Ыот:")
     for v in ans:  # type: ignore
         await msg.answer(str(v))
