@@ -71,16 +71,17 @@ async def tg_start(msg: types.Message):
     await msg.answer("цель показать где бог")
 
 
+async def send_file(msg: types.Message, path: str, **kwargs):
+    await msg.answer_document(types.FSInputFile(path, **kwargs))
+
+
 @disp.message(Command("code"))
 @log
 async def tg_code(msg: types.Message):
     if msg.from_user:
         logging.info(f"query for code: {msg.from_user.username}")
-    await msg.answer_document(
-        types.FSInputFile(__file__, filename="calc52bot.py"), )
-    await msg.answer_document(
-        types.FSInputFile(os.path.join(os.path.dirname(__file__),
-                                       "cits.json")))
+    await send_file(msg, __file__, filename="calc52bot.py")
+    await send_file(msg, os.path.join(os.path.dirname(__file__), "cits.json"))
 
 
 def is_num(s: str) -> bool:
