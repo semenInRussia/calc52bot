@@ -36,7 +36,10 @@ def log(f):
     # wrapper which do logging
 
     async def w(msg: types.Message):
-        logger.info(f"new message: {msg.text}")
+        who = msg.from_user.username if msg.from_user else "noname"
+        # "[banned]" or empty
+        suff = " [banned]" if who in banned else ""
+        logger.info(f"new message by @{who}{suff}: {msg.text}")
         await f(msg)
 
     return w
@@ -55,7 +58,7 @@ def noban(f):
             await f(msg)
             return
         who = msg.from_user.username
-        logger.info(f"new user {who} {' [banned]' if who in banned else ''}")
+        logger.info("check on ban")
         if who in banned:
             logger.warning(f"id: {msg.chat.id}")
             await msg.answer("привет, ты забанен")
@@ -98,9 +101,12 @@ owners = ["semenInRussia"]
 def forowners(f):
 
     async def w(msg: types.Message):
+        logger.info("check on admins")
         if msg.from_user and msg.from_user.username in owners:
+            logger.info("admin!")
             await f(msg)
         else:
+            logger.info("forbiden!")
             await msg.answer("Вы не админ")
 
     return w
@@ -110,6 +116,7 @@ def forowners(f):
 @log
 @forowners
 async def tg_log(msg: types.Message):
+    logger.info("send log.log")
     await send_file(msg, os.path.join(os.path.dirname(__file__), "log.log"))
 
 
@@ -193,10 +200,9 @@ async def tg_solve(msg: types.Message):
         return
 
     if not all(map(is_num, txt.split())):
-        if msg.chat and msg.chat.id != LOX_ID:
-            await msg.answer(
-                "Коэффициенты МНогоЧлена, это числа, возможно с точкой (не запятой)"
-            )
+        # await msg.answer(
+        #     "Коэффициенты МНогоЧлена, это числа, возможно с точкой (не запятой)"
+        # )
         return
 
     nums = list(map(float, txt.split()))
