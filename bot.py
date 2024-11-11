@@ -1,6 +1,8 @@
+import hashlib
 import os
 import asyncio, logging
 import json
+from typing import Self
 from sympy import symbols, Eq, solveset, Complexes
 
 from aiogram.filters.command import Command
@@ -16,16 +18,16 @@ disp = Dispatcher()
 logging.basicConfig(level=logging.INFO,
                     format='[%(asctime)s](%(levelname)s) %(message)s',
                     filename="log.log",
-                    encoding="UTF-*")
+                    encoding="UTF-8")
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
 
 def _solve(a: list[float]):
-    x = symbols("x")
     a.reverse()
     eq = 0
+    x = symbols("x")
     for p, v in enumerate(a):
         eq += (x**p) * v
 
@@ -36,38 +38,75 @@ def log(f):
     # wrapper which do logging
 
     async def w(msg: types.Message):
-        who = msg.from_user.username if msg.from_user else "noname"
+        who = msg.from_user.username if msg.from_user else "untitled"
         # "[banned]" or empty
-        suff = " [banned]" if who in banned else ""
-        logger.info(f"new message by @{who}{suff}: {msg.text}")
+        logger.info(f"new message by @{who}: {msg.text}")
         await f(msg)
 
     return w
 
 
-banned = []
+def tohash(s: str | int | None) -> str | None:
+    if s is None:
+        return None
+    if isinstance(s, int):
+        s = str(int)
+    h = hashlib.sha256()
+    h.update(s.encode())
+    return h.hexdigest()
 
-OWNER_ID = "664167507"
+
+def _is_key(key: str | int | None, s: set[str | None]) -> bool:
+    return tohash(key) in s
+
+
+banned = set()
+
+
+def is_banned(u: types.User) -> bool:
+    return _is_key(u.username, banned) or _is_key(u.id, banned)
 
 
 def noban(f):
     # wrapper which checks ensure that user is not banned
 
     async def wrapped(msg: types.Message):
-        if msg.from_user is None:
-            await f(msg)
-            return
-        who = msg.from_user.username
         logger.info("check on ban")
-        if who in banned:
-            logger.warning(f"id: {msg.chat.id}")
+        if msg.from_user and is_banned(msg.from_user):
+            logger.warning(f"chat-id: {msg.chat.id}")
             await msg.answer("привет, ты забанен")
-            if msg.text:
-                await bot.send_message(OWNER_ID, msg.text)
-        else:
-            await f(msg)
+            return
+        await f(msg)
 
     return wrapped
+
+
+# sha256 sums of usernames or telegram IDs of users on who continues mailing
+following = {tohash("Biomeh_1729")}
+
+# set of chat identifiers of folowers on following messages
+folowers = {"664167507"}
+
+
+def is_following(u: types.User) -> bool:
+    return _is_key(u.id, following) or _is_key(u.username, following)
+
+
+async def resend_msg_to(to: int | str, msg: types.Message):
+    await bot.forward_message(to, msg.chat.id, msg.message_id)
+
+
+def mailing(f):
+
+    async def w(msg: types.Message):
+        logger.info("check if following")
+        if msg.from_user and is_following(msg.from_user):
+            logger.info("do mailing")
+            for oid in folowers:
+                await bot.forward_message(oid, msg.chat.id, msg.message_id)
+        await f(msg)
+
+    return w
 
 
 @disp.message(Command('start'))
@@ -95,14 +134,20 @@ async def tg_code(msg: types.Message):
     await send_file(msg, os.path.join(os.path.dirname(__file__), "cits.json"))
 
 
-owners = ["semenInRussia"]
+owners: set[str | None] = {
+    "b3a9c97ef671022315e8cf559c2789dee539d169c29a3cf823ed7e5972c06477"
+}
 
 
-def forowners(f):
+def is_owner(u: types.User) -> bool:
+    return _is_key(u.username, owners) or _is_key(u.id, owners)
+
+
+def for_owners(f):
 
     async def w(msg: types.Message):
         logger.info("check on admins")
-        if msg.from_user and msg.from_user.username in owners:
+        if msg.from_user and is_owner(msg.from_user):
             logger.info("admin!")
             await f(msg)
         else:
@@ -114,7 +159,7 @@ def forowners(f):
 
 @disp.message(Command("log"))
 @log
-@forowners
+@for_owners
 async def tg_log(msg: types.Message):
     logger.info("send log.log")
     await send_file(msg, os.path.join(os.path.dirname(__file__), "log.log"))
@@ -179,7 +224,8 @@ async def lox(msg: types.Message):
     # send message to lox
     if msg.text and only_text(msg.text).strip():
         logger.info("message to lox was sent")
-        await bot.send_message(LOX_ID, only_text(msg.text))
+        msg.text = only_text(msg.text)
+        await resend_msg_to(LOX_ID, msg)
         await msg.answer("отправил")
     elif msg.text:
         logger.warning("message to lox was empty and wasn't sent")
@@ -188,6 +234,7 @@ async def lox(msg: types.Message):
 @disp.message(F.text)
 @disp.message(Command("calc"))
 @log
+@mailing
 @noban
 @handle_cits
 async def tg_solve(msg: types.Message):
@@ -219,6 +266,13 @@ async def tg_solve(msg: types.Message):
     await msg.answer("Ыот:")
     for v in ans:  # type: ignore
         await msg.answer(str(v))
+
+
+@disp.message()
+@log
+@mailing
+async def handle_all(u: types.Message):
+    pass
 
 
 async def main():
