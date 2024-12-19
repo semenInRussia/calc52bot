@@ -1,8 +1,8 @@
 import hashlib
 import os
-import asyncio, logging
+import asyncio
+import logging
 import json
-from typing import Self
 from sympy import symbols, Eq, solveset, Complexes
 
 from aiogram.filters.command import Command
@@ -15,10 +15,12 @@ bot = Bot(token=token)
 disp = Dispatcher()
 
 # logging settings
-logging.basicConfig(level=logging.INFO,
-                    format='[%(asctime)s](%(levelname)s) %(message)s',
-                    filename="log.log",
-                    encoding="UTF-8")
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(asctime)s](%(levelname)s) %(message)s",
+    filename="log.log",
+    encoding="UTF-8",
+)
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -97,7 +99,6 @@ async def resend_msg_to(to: int | str, msg: types.Message):
 
 
 def mailing(f):
-
     async def w(msg: types.Message):
         logger.info("check if following")
         if msg.from_user and is_following(msg.from_user):
@@ -109,7 +110,7 @@ def mailing(f):
     return w
 
 
-@disp.message(Command('start'))
+@disp.message(Command("start"))
 @log
 @noban
 async def tg_start(msg: types.Message):
@@ -144,7 +145,6 @@ def is_owner(u: types.User) -> bool:
 
 
 def for_owners(f):
-
     async def w(msg: types.Message):
         logger.info("check on admins")
         if msg.from_user and is_owner(msg.from_user):
@@ -167,7 +167,7 @@ async def tg_log(msg: types.Message):
 
 def is_num(s: str) -> bool:
     try:
-        a = float(s)
+        _ = float(s)
     except ValueError:
         return False
     return True
@@ -177,7 +177,7 @@ def only_text(s: str) -> str:
     words = s.split(" ")
     # remove words which starts with @ or /
     for w in words:
-        if w and w[0] in '/@':
+        if w and w[0] in "/@":
             s = s.replace(w, "")
     return s.strip()
 
@@ -209,8 +209,7 @@ def handle_cits(f):
 @noban
 async def tg_cits(msg: types.Message):
     logger.info("give list of cits")
-    await msg.answer(
-        "Список ключей для цитат, просто напишите ключ, я дам цитату:")
+    await msg.answer("Список ключей для цитат, просто напишите ключ, я дам цитату:")
     await msg.answer("\n- ".join([""] + list(cits.keys())))
 
 
@@ -279,7 +278,7 @@ async def main():
     await disp.start_polling(bot)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
