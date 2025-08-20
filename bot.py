@@ -1,12 +1,12 @@
-import hashlib
-import os
 import asyncio
-import logging
+import hashlib
 import json
-from sympy import symbols, Eq, solveset, Complexes
+import logging
+import os
 
+from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters.command import Command
-from aiogram import Bot, Dispatcher, types, F
+from sympy import Complexes, Eq, solveset, symbols
 
 with open("token.txt", "r") as f:
     token = f.readline().strip()
@@ -41,7 +41,6 @@ def log(f):
 
     async def w(msg: types.Message):
         who = msg.from_user.username if msg.from_user else "untitled"
-        # "[banned]" or empty
         logger.info(f"new message by @{who}: {msg.text}")
         await f(msg)
 
@@ -270,7 +269,7 @@ async def tg_solve(msg: types.Message):
 @disp.message()
 @log
 @mailing
-async def handle_all(u: types.Message):
+async def handle_all(_: types.Message):
     pass
 
 
